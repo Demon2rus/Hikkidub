@@ -6,6 +6,8 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    # Добавляем корень проекта в PYTHONPATH для корректного импорта модулей
+    sys.path.insert(0, os.path.dirname(__file__))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hikkidub.settings')
     try:
         from django.core.management import execute_from_command_line

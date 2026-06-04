@@ -2,8 +2,40 @@
 .env
 .env.*
 
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+dist/
+build/
+
+# База данных
 *.sqlite3
+*.sqlite3.pre_restore_*
+
+# Виртуальное окружение
 .venv/
+venv/
 hikkivenv/
+
+# Медиафайлы (загружаются пользователями, не хранятся в git)
+media/
+!media/voice_actors/
+!media/voice_actors/.gitkeep
+
+# Бэкапы
+backups/
+
+# Статические файлы (собираются при деплое)
+staticfiles/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

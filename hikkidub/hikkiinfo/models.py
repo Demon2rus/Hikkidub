@@ -1,12 +1,12 @@
 from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 
 
 class Genre(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название жанра")
-    slug = models.SlugField(max_length=100, unique=True, blank=True, verbose_name="URL-адрес")
+    slug = models.SlugField(max_length=100, unique=True, blank=True, allow_unicode=True, verbose_name="URL-адрес")
     description = models.TextField(blank=True, verbose_name="Описание")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
@@ -21,7 +21,7 @@ class Genre(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = slugify(self.name, allow_unicode=True)
         super().save(*args, **kwargs)
 
 
@@ -36,7 +36,7 @@ class Anime(models.Model):
 
     title = models.CharField(max_length=200, verbose_name="Название")
     title_original = models.CharField(max_length=200, blank=True, verbose_name="Оригинальное название")
-    slug = models.SlugField(max_length=200, unique=True, blank=True, verbose_name="URL-адрес")
+    slug = models.SlugField(max_length=200, unique=True, blank=True, allow_unicode=True, verbose_name="URL-адрес")
     description = models.TextField(verbose_name="Описание")
     poster = models.ImageField(upload_to='posters/', blank=True, null=True, verbose_name="Постер")
     release_date = models.DateField(verbose_name="Год выпуска", validators=[MinValueValidator(1900), MaxValueValidator(2100)])
@@ -62,7 +62,7 @@ class Anime(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)
+            self.slug = slugify(self.title, allow_unicode=True)
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -78,7 +78,17 @@ class Episode(models.Model):
     number = models.IntegerField(verbose_name="Номер эпизода", validators=[MinValueValidator(1)])
     title = models.CharField(max_length=200, blank=True, verbose_name="Название эпизода")
     description = models.TextField(blank=True, verbose_name="Описание")
-    duration = models.CharField(max_length=10, default="24:00", verbose_name="Длительность")
+    duration_seconds = models.IntegerField(
+        default=1440,
+        validators=[MinValueValidator(1)],
+        verbose_name="Длительность (секунды)"
+    )
+    video_file = models.FileField(
+        upload_to='videos/%Y/%m/',
+        blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['mp4', 'webm', 'mkv'])],
+        verbose_name="Видеофайл"
+    )
     is_published = models.BooleanField(default=False, verbose_name="Опубликовано")
     release_date = models.DateField(blank=True, null=True, verbose_name="Дата выхода")
     views_count = models.IntegerField(default=0, verbose_name="Количество просмотров")
@@ -96,6 +106,27 @@ class Episode(models.Model):
 
     def get_absolute_url(self):
         return reverse('episode_detail', kwargs={'anime_slug': self.anime.slug, 'episode_number': self.number})
+
+    @property
+    def duration_display(self):
+        """Возвращает длительность в формате MM:SS или HH:MM:SS."""
+        total = self.duration_seconds
+        hours = total // 3600
+        minutes = (total % 3600) // 60
+        seconds = total % 60
+        if hours > 0:
+            return f"{hours}:{minutes:02d}:{seconds:02d}"
+        return f"{minutes}:{seconds:02d}"
+
+    @property
+    def active_qualities(self):
+        """Возвращает только активные качества видео."""
+        return self.video_qualities.filter(is_active=True)
+
+    @property
+    def has_subtitles(self):
+        """Проверяет, есть ли субтитры у эпизода."""
+        return self.subtitles.exists()
 
 
 class VideoQuality(models.Model):
@@ -125,7 +156,7 @@ class VideoQuality(models.Model):
 
 class VoiceActor(models.Model):
     name = models.CharField(max_length=100, verbose_name="Имя")
-    slug = models.SlugField(max_length=100, unique=True, blank=True, verbose_name="URL-адрес")
+    slug = models.SlugField(max_length=100, unique=True, blank=True, allow_unicode=True, verbose_name="URL-адрес")
     bio = models.TextField(blank=True, verbose_name="Биография")
     photo = models.ImageField(upload_to='voice_actors/', blank=True, null=True, verbose_name="Фото")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
@@ -141,7 +172,7 @@ class VoiceActor(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = slugify(self.name, allow_unicode=True)
         super().save(*args, **kwargs)
 
 
@@ -162,6 +193,29 @@ class Character(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.anime.title})"
+
+
+class Subtitle(models.Model):
+    LANGUAGE_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'English'),
+    ]
+
+    episode = models.ForeignKey(Episode, on_delete=models.CASCADE, related_name='subtitles', verbose_name="Эпизод")
+    language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, verbose_name="Язык")
+    vtt_content = models.TextField(verbose_name="VTT-содержимое")
+    is_auto_generated = models.BooleanField(default=False, verbose_name="Авто-сгенерировано")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
+
+    class Meta:
+        verbose_name = "Субтитры"
+        verbose_name_plural = "Субтитры"
+        ordering = ['episode', 'language']
+        unique_together = ['episode', 'language']
+
+    def __str__(self):
+        return f"{self.episode} — {self.get_language_display()}"
 
 
 class DatabaseBackup(models.Model):

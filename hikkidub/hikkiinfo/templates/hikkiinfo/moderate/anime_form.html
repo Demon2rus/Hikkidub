@@ -1,0 +1,35 @@
+{% extends 'hikkiinfo/base.html' %}
+
+{% block title %}{{ action }} — HikkiDub{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="section-title">{{ action }}</h2>
+
+    <div style="max-width: 700px; background: var(--bg-card); border-radius: var(--radius); padding: 32px;">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div style="color: var(--danger); font-size: 0.85rem; margin-top: 4px;">
+                        {{ field.errors|join:", " }}
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="submit" class="btn-primary" style="width: auto; padding: 10px 32px;">Сохранить</button>
+                <a href="{% url 'moderate_dashboard' %}" style="padding: 10px 24px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); text-decoration: none;">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends 'hikkiinfo/base.html' %}
+{% load static %}
+
+{% block title %}{{ anime.title }} — Эпизод {{ episode.number }} — HikkiDub{% endblock %}
+
+{% block extra_css %}
+<style>
+    .player-header h1 {
+        font-family: 'Manrope', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <div class="player-header">
+        <div class="breadcrumb">
+            <a href="{% url 'index' %}">Главная</a> /
+            <a href="{% url 'anime_detail' anime.slug %}">{{ anime.title }}</a> /
+            Эпизод {{ episode.number }}
+        </div>
+        <h1>{{ anime.title }} — Эпизод {{ episode.number }}{% if episode.title %}: {{ episode.title }}{% endif %}</h1>
+    </div>
+
+    <div class="player-layout">
+        <!-- Main Player -->
+        <div class="player-main">
+            <div class="video-wrapper">
+                <!-- Ambient glow from poster -->
+                {% if anime.poster %}
+                    <div class="video-glow" style="background: radial-gradient(ellipse at center, rgba(124,92,252,0.5) 0%, transparent 70%);"></div>
+                {% endif %}
+                <div class="video-container">
+                    {% if episode.video_file %}
+                        <video id="hikki-player" controls crossorigin="anonymous"
+                               poster="{% if anime.poster %}{{ anime.poster.url }}{% endif %}"
+                               preload="metadata">
+                            <source src="{{ episode.video_file.url }}" type="video/mp4">
+                            {% for sub in subtitles %}
+                                <track kind="subtitles" src="data:text/vtt;base64,{{ sub.vtt_content|default:'' }}"
+                                       srclang="{{ sub.language }}" label="{{ sub.get_language_display }}"
+                                       {% if forloop.first %}default{% endif %}>
+                            {% endfor %}
+                        </video>
+                    {% elif qualities %}
+                        <video id="hikki-player" controls crossorigin="anonymous"
+                               poster="{% if anime.poster %}{{ anime.poster.url }}{% endif %}"
+                               preload="metadata">
+                            {% with active_quality as q %}
+                                {% if q %}<source src="{{ q.video_url }}" type="video/mp4">{% endif %}
+                            {% endwith %}
+                            {% for sub in subtitles %}
+                                <track kind="subtitles"
+                                       srclang="{{ sub.language }}" label="{{ sub.get_language_display }}"
+                                       {% if forloop.first %}default{% endif %}>
+                            {% endfor %}
+                        </video>
+                    {% else %}
+                        <div class="no-video">
+                            <span style="font-size: 4rem;">🎬</span>
+                            <span>Видео не загружено</span>
+                            <span style="font-size:0.85rem; color: var(--text-muted);">Добавьте видеофайл через панель модератора</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="player-controls">
+                {% if qualities %}
+                <div class="quality-selector">
+                    <span style="font-size:0.85rem; color: var(--text-secondary);">Качество:</span>
+                    <select id="quality-select" onchange="switchQuality(this.value)">
+                        {% for q in qualities %}
+                            <option value="{{ q.id }}" {% if forloop.first %}selected{% endif %}>
+                                {{ q.get_quality_display }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                {% if subtitles %}
+                <div class="quality-selector">
+                    <span style="font-size:0.85rem; color: var(--text-secondary);">Субтитры:</span>
+                    <select id="subtitle-select" onchange="switchSubtitle(this.value)">
+                        <option value="">Без субтитров</option>
+                        {% for sub in subtitles %}
+                            <option value="{{ sub.id }}" {% if forloop.first %}selected{% endif %}>
+                                {{ sub.get_language_display }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Episode meta -->
+            <div style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 8px;">
+                Длительность: {{ episode.duration_display }}
+                {% if episode.release_date %} | Вышел: {{ episode.release_date|date:"d.m.Y" }}{% endif %}
+                | Просмотров: {{ episode.views_count }}
+            </div>
+            {% if episode.description %}
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">{{ episode.description }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar Episodes with progress -->
+        <div class="episode-sidebar">
+            <h3>{{ anime.title }}</h3>
+            {% for ep in episodes %}
+                <a href="{% url 'episode_detail' anime.slug ep.number %}"
+                   class="sidebar-episode {% if ep.number == episode.number %}active{% endif %}">
+                    <span class="ep-num">{{ ep.number }}</span>
+                    <span class="ep-title" style="flex:1;">
+                        {% if ep.title %}{{ ep.title }}{% else %}Эпизод {{ ep.number }}{% endif %}
+                        {% if ep.number == episode.number %}
+                            <div class="ep-progress">
+                                <div class="ep-progress-fill" id="ep-progress-bar" style="width:0%;"></div>
+                            </div>
+                        {% endif %}
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const player = document.getElementById('hikki-player');
+    if (player) {
+        // Save & restore position
+        const storageKey = 'hikki_pos_{{ anime.slug }}_{{ episode.number }}';
+        const saved = localStorage.getItem(storageKey);
+        if (saved) player.currentTime = parseFloat(saved);
+
+        player.addEventListener('timeupdate', () => {
+            localStorage.setItem(storageKey, player.currentTime);
+            // Update progress bar in sidebar
+            const bar = document.getElementById('ep-progress-bar');
+            if (bar && player.duration) {
+                bar.style.width = (player.currentTime / player.duration * 100) + '%';
+            }
+        });
+    }
+
+    // Switch quality
+    async function switchQuality(qualityId) {
+        const csrf = getCookie('csrftoken');
+        const resp = await fetch('{% url "switch_quality" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
+            body: 'quality_id=' + qualityId
+        });
+        const data = await resp.json();
+        if (data.video_url && player) {
+            const t = player.currentTime, paused = player.paused;
+            player.querySelector('source').src = data.video_url;
+            player.load();
+            player.currentTime = t;
+            if (!paused) player.play();
+        }
+    }
+
+    // Switch subtitles
+    async function switchSubtitle(id) {
+        if (!player) return;
+        player.querySelectorAll('track').forEach(t => t.remove());
+        if (!id) return;
+        const resp = await fetch('/api/subtitle/' + id + '/');
+        const data = await resp.json();
+        if (data.vtt) {
+            const blob = new Blob([data.vtt], { type: 'text/vtt' });
+            const track = document.createElement('track');
+            track.kind = 'subtitles'; track.label = data.label;
+            track.srclang = data.language; track.src = URL.createObjectURL(blob);
+            track.default = true;
+            player.appendChild(track);
+            const t = player.currentTime, paused = player.paused;
+            player.load(); player.currentTime = t;
+            if (!paused) player.play();
+        }
+    }
+</script>
+{% endblock %}

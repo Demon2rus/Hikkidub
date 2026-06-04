@@ -1,0 +1,66 @@
+{% extends 'hikkiinfo/base.html' %}
+
+{% block title %}Панель модератора — HikkiDub{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="section-title">Панель модератора</h2>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card fade-in">
+            <div class="num accent">{{ stats.total_anime }}</div>
+            <div class="lbl">Аниме в базе</div>
+        </div>
+        <div class="stat-card fade-in">
+            <div class="num success">{{ stats.total_episodes }}</div>
+            <div class="lbl">Всего эпизодов</div>
+        </div>
+        <div class="stat-card fade-in">
+            <div class="num warning">{{ stats.pending_episodes }}</div>
+            <div class="lbl">Не опубликовано</div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="margin-bottom: 28px;">
+        <a href="{% url 'moderate_add_anime' %}" class="btn btn-accent">+ Добавить аниме</a>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card fade-in">
+        <table>
+            <thead>
+                <tr>
+                    <th>Аниме</th>
+                    <th>Статус</th>
+                    <th>Эпизоды</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for anime in anime_list %}
+                <tr>
+                    <td>
+                        <div style="font-weight:600;">{{ anime.title }}</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);">{{ anime.release_date|date:"Y" }}</div>
+                    </td>
+                    <td><span class="tag badge-{{ anime.status }}">{{ anime.get_status_display }}</span></td>
+                    <td>{{ anime.completed_episodes_count }} / {{ anime.total_episodes }}</td>
+                    <td>
+                        <a href="{% url 'moderate_edit_anime' anime.id %}">Изменить</a>
+                        <a href="{% url 'moderate_add_episode' anime.id %}" style="color:var(--success);margin-left:10px;">+ Эпизод</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="padding:40px;text-align:center;color:var(--text-muted);">
+                        Нет добавленных аниме. <a href="{% url 'moderate_add_anime' %}">Добавить первое</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

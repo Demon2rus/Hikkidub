@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from .models import (
     Genre, Anime, Episode, VideoQuality, 
-    VoiceActor, Character, DatabaseBackup
+    VoiceActor, Character, Subtitle, DatabaseBackup
 )
 
 
@@ -52,7 +52,7 @@ class VideoQualityInline(admin.TabularInline):
 
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
-    list_display = ['episode_info', 'anime_link', 'duration', 'is_published', 
+    list_display = ['episode_info', 'anime_link', 'duration_display', 'is_published', 
                     'views_count', 'release_date', 'created_at']
     list_filter = ['is_published', 'release_date', 'created_at', 'anime']
     search_fields = ['title', 'anime__title', 'number']
@@ -63,7 +63,7 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Основная информация', {
-            'fields': ('anime', 'number', 'title', 'description', 'duration')
+            'fields': ('anime', 'number', 'title', 'description', 'duration_seconds', 'video_file')
         }),
         ('Публикация', {
             'fields': ('is_published', 'release_date', 'views_count')
@@ -557,6 +557,33 @@ class DatabaseBackupAdmin(admin.ModelAdmin):
         if not change:
             obj.created_by = request.user.username if request.user.is_authenticated else 'system'
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Subtitle)
+class SubtitleAdmin(admin.ModelAdmin):
+    list_display = ['episode_link', 'language', 'is_auto_generated', 'created_at', 'updated_at']
+    list_filter = ['language', 'is_auto_generated', 'created_at']
+    search_fields = ['episode__anime__title', 'episode__title', 'vtt_content']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('episode', 'language', 'is_auto_generated')
+        }),
+        ('Содержимое субтитров', {
+            'fields': ('vtt_content',),
+            'description': 'Вставьте содержимое VTT-файла (WebVTT формат)'
+        }),
+        ('Метаданные', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def episode_link(self, obj):
+        url = reverse('admin:hikkiinfo_episode_change', args=[obj.episode.pk])
+        return format_html('<a href="{}">{}</a>', url, str(obj.episode))
+    episode_link.short_description = 'Эпизод'
 
 
 def create_database_backup(request):

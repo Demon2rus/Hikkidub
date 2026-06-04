@@ -1,0 +1,66 @@
+{% extends 'hikkiinfo/base.html' %}
+
+{% block title %}Каталог аниме — HikkiDub{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="section-title fade-in">Каталог аниме</h2>
+
+    <!-- Search -->
+    <form method="get" action="{% url 'catalog' %}" style="margin-bottom: 28px;">
+        <div class="search-bar" style="max-width: 420px;">
+            <input type="text" name="q" placeholder="Поиск аниме..." value="{{ search_query }}">
+            <button type="submit">Найти</button>
+        </div>
+    </form>
+
+    <!-- Genre filters -->
+    <div class="filters">
+        <a href="{% url 'catalog' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+           class="filter-btn {% if not current_genre %}active{% endif %}">Все жанры</a>
+        {% for genre in genres %}
+            <a href="{% url 'catalog' %}?genre={{ genre.slug }}{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="filter-btn {% if current_genre == genre.slug %}active{% endif %}">{{ genre.name }}</a>
+        {% endfor %}
+    </div>
+
+    <!-- Status filters -->
+    <div class="filters" style="margin-bottom: 28px;">
+        <a href="{% url 'catalog' %}?{% if current_genre %}genre={{ current_genre }}&{% endif %}{% if search_query %}q={{ search_query }}{% endif %}"
+           class="filter-btn {% if not current_status %}active{% endif %}">Все статусы</a>
+        {% for status_code, status_label in statuses %}
+            <a href="{% url 'catalog' %}?status={{ status_code }}{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="filter-btn {% if current_status == status_code %}active{% endif %}">{{ status_label }}</a>
+        {% endfor %}
+    </div>
+
+    <!-- Results count -->
+    <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem;">Найдено: {{ total_count }}</p>
+
+    {% if anime_list %}
+        <div class="cards-grid">
+            {% for anime in anime_list %}
+                {% include 'hikkiinfo/includes/anime_card.html' with anime=anime %}
+            {% endfor %}
+        </div>
+
+        {% if anime_list.paginator.num_pages > 1 %}
+        <div class="pagination">
+            {% if anime_list.has_previous %}
+                <a href="?page=1{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">&laquo;</a>
+                <a href="?page={{ anime_list.previous_page_number }}{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">{{ anime_list.previous_page_number }}</a>
+            {% endif %}
+            <span class="current">{{ anime_list.number }}</span>
+            {% if anime_list.has_next %}
+                <a href="?page={{ anime_list.next_page_number }}{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">{{ anime_list.next_page_number }}</a>
+                <a href="?page={{ anime_list.paginator.num_pages }}{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">&raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% else %}
+        <p style="text-align: center; color: var(--text-muted); padding: 80px 0; font-size: 1.1rem;">
+            Ничего не найдено по вашему запросу
+        </p>
+    {% endif %}
+</div>
+{% endblock %}

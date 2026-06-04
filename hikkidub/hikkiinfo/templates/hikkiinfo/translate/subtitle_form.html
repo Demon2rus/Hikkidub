@@ -1,0 +1,76 @@
+{% extends 'hikkiinfo/base.html' %}
+
+{% block title %}Субтитры ({{ language_label }}) — {{ episode.anime.title }} Эп. {{ episode.number }} — HikkiDub{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vtt-example {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        margin-bottom: 16px;
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="player-header">
+        <div class="breadcrumb">
+            <a href="{% url 'translate_dashboard' %}">Панель переводчика</a> /
+            {{ episode.anime.title }} — Эпизод {{ episode.number }}
+        </div>
+        <h2 class="section-title">Субтитры — {{ language_label }}</h2>
+    </div>
+
+    <div style="max-width: 800px; background: var(--bg-card); border-radius: var(--radius); padding: 32px;">
+        <div style="margin-bottom: 16px; color: var(--text-secondary); font-size: 0.9rem;">
+            Формат: <strong>WebVTT</strong>. Каждая субтитровая дорожка начинается с номера, затем временной диапазон, затем текст.
+        </div>
+
+        <div class="vtt-example">
+WEBVTT
+
+00:00:01.000 --> 00:00:05.000
+Привет! Добро пожаловать в этот удивительный мир.
+
+00:00:06.000 --> 00:00:12.000
+Сегодня мы отправляемся в путешествие, полное приключений.
+
+00:00:13.000 --> 00:00:18.000
+Ты готов? Тогда поехали!
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div style="color: var(--danger); font-size: 0.85rem; margin-top: 4px;">
+                        {{ field.errors|join:", " }}
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="submit" class="btn-primary" style="width: auto; padding: 10px 32px;">Сохранить субтитры</button>
+                <a href="{% url 'translate_dashboard' %}" style="padding: 10px 24px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); text-decoration: none;">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
