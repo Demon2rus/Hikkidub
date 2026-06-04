@@ -350,7 +350,7 @@ class Command(BaseCommand):
         mod_group = Group.objects.get(name='Модераторы')
         mod_user, mod_created = User.objects.get_or_create(
             username='moderator',
-            defaults={'email': 'mod@hikkidub.local', 'is_staff': True}
+            defaults={'email': 'mod@hikkidub.local'}
         )
         if mod_created:
             mod_user.set_password('moderator123')
@@ -362,7 +362,7 @@ class Command(BaseCommand):
         tr_group = Group.objects.get(name='Переводчики')
         tr_user, tr_created = User.objects.get_or_create(
             username='translator',
-            defaults={'email': 'tr@hikkidub.local', 'is_staff': True}
+            defaults={'email': 'tr@hikkidub.local'}
         )
         if tr_created:
             tr_user.set_password('translator123')

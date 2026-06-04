@@ -700,3 +700,6 @@ def download_backup_view(request, backup_id):
 admin.site.site_header = "HikkiDub - Администрирование"
 admin.site.site_title = "HikkiDub Admin"
 admin.site.index_title = "Панель управления базой данных"
+
+# Ограничение: админ-панель только для суперпользователей
+admin.site.has_permission = lambda request: request.user.is_active and request.user.is_superuser

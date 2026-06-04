@@ -2,6 +2,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
+from datetime import date
 
 
 class Genre(models.Model):
@@ -39,7 +40,10 @@ class Anime(models.Model):
     slug = models.SlugField(max_length=200, unique=True, blank=True, allow_unicode=True, verbose_name="URL-адрес")
     description = models.TextField(verbose_name="Описание")
     poster = models.ImageField(upload_to='posters/', blank=True, null=True, verbose_name="Постер")
-    release_date = models.DateField(verbose_name="Год выпуска", validators=[MinValueValidator(1900), MaxValueValidator(2100)])
+    release_date = models.DateField(
+        verbose_name="Год выпуска",
+        validators=[MinValueValidator(date(1900, 1, 1)), MaxValueValidator(date(2100, 12, 31))]
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned', verbose_name="Статус")
     genres = models.ManyToManyField(Genre, related_name='anime', verbose_name="Жанры")
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0, 
@@ -63,7 +67,14 @@ class Anime(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title, allow_unicode=True)
+        # Fallback: если slugify вернул пустую строку (например, только спецсимволы)
+        if not self.slug:
+            self.slug = f'anime-{self.pk or ""}'
         super().save(*args, **kwargs)
+        # Если slug был основан на pk (ещё не было), обновляем после save
+        if self.slug == 'anime-':
+            self.slug = f'anime-{self.pk}'
+            super().save(update_fields=['slug'])
 
     def get_absolute_url(self):
         return reverse('anime_detail', kwargs={'slug': self.slug})

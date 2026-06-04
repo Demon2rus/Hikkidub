@@ -115,7 +115,7 @@ def auto_set_release_date(sender, instance, **kwargs):
 def update_anime_slug_if_title_changed(sender, instance, created, **kwargs):
     if created or not instance.slug:
         return
-    expected_slug = slugify(instance.title)
+    expected_slug = slugify(instance.title, allow_unicode=True)
     if instance.slug == expected_slug:
         return
     if not Anime.objects.filter(slug=expected_slug).exclude(pk=instance.pk).exists():
